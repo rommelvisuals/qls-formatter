@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QLS Formatter — Poopy</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+button{font-family:inherit;cursor:pointer}
+input,textarea{font-family:inherit}
+
+/* ── Brand tokens ── */
+:root{
+  --orange:#FF7F00;--orange-h:#E57200;--orange-soft:#FFF3E6;--orange-b:#FFD0A0;
+  --green:#219653;--green-soft:#EAF5EF;--green-b:#A8D9BB;
+  --amber:#C97A00;--amber-soft:#FEF6E4;--amber-b:#F0D090;
+  --red:#C0392B;--red-soft:#FDEDEC;--blue:#1D85E8;--blue-soft:#EBF4FE;
+}
+[data-theme="light"]{
+  --bg:#F4F4F1;--bg2:#EAEAE6;--surf:#FFFFFF;--surf2:#F8F8F6;--surf3:#F0F0EC;
+  --bdr:#E0E0D8;--bdr2:#C8C8BE;--txt:#121212;--txt2:#555550;--txt3:#8A8A82;
+  --sh:0 1px 2px rgba(0,0,0,.06);--sh2:0 1px 3px rgba(0,0,0,.08),0 4px 12px rgba(0,0,0,.05);
+}
+[data-theme="dark"]{
+  --bg:#141414;--bg2:#1A1A1A;--surf:#1F1F1F;--surf2:#252525;--surf3:#2C2C2C;
+  --bdr:#333;--bdr2:#444;--txt:#F2F2EF;--txt2:#AAAAAA;--txt3:#666;
+  --sh:0 1px 2px rgba(0,0,0,.3);--sh2:0 1px 3px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.3);
+  --orange-soft:#2A1A00;--orange-b:#5A3500;
+  --green-soft:#0A1F12;--green-b:#1A4D2A;
+  --amber-soft:#1F1500;--amber-b:#4A3500;
+  --blue-soft:#0D1F30;
+}
+
+body{background:var(--bg);color:var(--txt);font-family:'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5;min-height:100vh}
+
+/* ── Topbar ── */
+.topbar{position:sticky;top:0;z-index:200;background:var(--surf);border-bottom:1px solid var(--bdr);box-shadow:var(--sh);display:flex;align-items:center;gap:12px;padding:0 24px;height:54px}
+.logo-mark{width:28px;height:28px;background:var(--orange);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.logo-mark svg{width:15px;height:15px;color:#fff}
+.topbar-title{font-size:15px;font-weight:700;letter-spacing:-.3px}
+.topbar-sep{width:1px;height:18px;background:var(--bdr);margin:0 2px}
+.topbar-sub{font-size:12px;color:var(--txt3);font-weight:400}
+.spacer{flex:1}
+.store-input-wrap{display:flex;align-items:center;gap:6px;background:var(--surf3);border:1px solid var(--bdr);border-radius:8px;padding:0 10px;height:32px}
+.store-input-wrap svg{width:12px;height:12px;color:var(--txt3);flex-shrink:0}
+.store-input-wrap label{font-size:11px;color:var(--txt3);white-space:nowrap}
+.store-input{background:transparent;border:none;outline:none;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--txt);width:130px}
+.theme-toggle{display:flex;align-items:center;background:var(--surf3);border:1px solid var(--bdr);border-radius:20px;padding:3px}
+.tbtn{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:13px;border:none;background:transparent;color:var(--txt3);transition:all .15s}
+.tbtn svg{width:13px;height:13px}
+.tbtn.active{background:var(--surf);color:var(--txt);box-shadow:var(--sh)}
+
+/* ── Layout ── */
+.main{max-width:1060px;margin:0 auto;padding:28px 24px 60px;display:flex;flex-direction:column;gap:12px}
+
+/* ── Upload ── */
+.upload-zone{background:var(--surf);border:1.5px dashed var(--bdr2);border-radius:12px;position:relative;cursor:pointer;transition:border-color .15s,background .15s}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--orange);background:var(--orange-soft)}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-inner{padding:40px 32px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+.upload-ico{width:48px;height:48px;background:var(--surf3);border:1px solid var(--bdr);border-radius:12px;display:flex;align-items:center;justify-content:center;transition:background .15s,border-color .15s}
+.upload-ico svg{width:22px;height:22px;color:var(--txt3)}
+.upload-zone:hover .upload-ico,.upload-zone.drag-over .upload-ico{background:var(--orange-soft);border-color:var(--orange-b)}
+.upload-zone:hover .upload-ico svg,.upload-zone.drag-over .upload-ico svg{color:var(--orange)}
+.upload-title{font-size:15px;font-weight:600}
+.upload-hint{font-size:12px;color:var(--txt3)}
+.upload-pill{display:none;align-items:center;gap:6px;background:var(--orange-soft);border:1px solid var(--orange-b);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:500;color:var(--orange);font-family:'JetBrains Mono',monospace}
+.upload-pill svg{width:12px;height:12px}
+
+/* ── Stats ── */
+.stats-grid{display:none;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat-card{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;padding:16px 18px;box-shadow:var(--sh);display:flex;flex-direction:column;gap:2px}
+.stat-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.stat-ico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.stat-ico svg{width:14px;height:14px}
+.stat-ico.or{background:var(--orange-soft);color:var(--orange)}
+.stat-ico.bl{background:var(--blue-soft);color:var(--blue)}
+.stat-ico.gr{background:var(--green-soft);color:var(--green)}
+.stat-ico.am{background:var(--amber-soft);color:var(--amber)}
+[data-theme="dark"] .stat-ico.bl{background:#0D1F30;color:#5AB5F8}
+.stat-num{font-size:26px;font-weight:700;letter-spacing:-1px;line-height:1}
+.stat-num.gr{color:var(--green)}
+.stat-num.am{color:var(--amber)}
+.stat-lbl{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;color:var(--txt3)}
+
+/* ── Section card ── */
+.sec-card{display:none;background:var(--surf);border:1px solid var(--bdr);border-radius:10px;box-shadow:var(--sh);overflow:hidden}
+.sec-head{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;border-bottom:1px solid var(--bdr);background:var(--surf2)}
+.sec-head-l{display:flex;align-items:center;gap:7px}
+.sec-head-l svg{width:14px;height:14px;color:var(--txt3);flex-shrink:0}
+.sec-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--txt2)}
+.sec-head-r{display:flex;align-items:center;gap:8px}
+
+/* ── Search input ── */
+.search-wrap{display:flex;align-items:center;gap:6px;background:var(--surf3);border:1px solid var(--bdr);border-radius:7px;padding:0 10px;height:30px;transition:border-color .15s}
+.search-wrap:focus-within{border-color:var(--orange)}
+.search-wrap svg{width:12px;height:12px;color:var(--txt3);flex-shrink:0}
+.search-input{background:transparent;border:none;outline:none;font-size:12px;color:var(--txt);width:140px}
+.search-input::placeholder{color:var(--txt3)}
+
+/* ── Filter chips ── */
+.filter-body{padding:12px 16px;display:flex;flex-wrap:wrap;gap:6px}
+.txt-btn{background:none;border:none;font-size:12px;font-weight:500;color:var(--txt3);padding:0;text-decoration:underline;text-underline-offset:2px;transition:color .12s}
+.txt-btn:hover{color:var(--txt)}
+.chip{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--bdr);border-radius:20px;padding:4px 10px 4px 8px;cursor:pointer;font-size:12px;font-weight:500;user-select:none;background:var(--surf3);color:var(--txt2);transition:all .12s}
+.chip input[type=checkbox]{display:none}
+.chip-dot{width:6px;height:6px;border-radius:50%;background:var(--bdr2);flex-shrink:0;transition:background .12s}
+.chip:hover{border-color:var(--orange);color:var(--txt)}
+.chip.on{background:var(--orange);border-color:var(--orange);color:#fff}
+.chip.on .chip-dot{background:rgba(255,255,255,.5)}
+.chip.hidden-chip{display:none}
+.chip-count{font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(0,0,0,.1);padding:1px 5px;border-radius:8px}
+.chip.on .chip-count{background:rgba(255,255,255,.22)}
+
+/* ── Warning ── */
+.warn-box{display:none;background:var(--amber-soft);border:1px solid var(--amber-b);border-radius:10px;overflow:hidden}
+.warn-head{display:flex;align-items:center;gap:7px;padding:10px 16px;font-size:12px;font-weight:600;color:var(--amber)}
+.warn-head svg{width:13px;height:13px;flex-shrink:0}
+.warn-list{border-top:1px solid var(--amber-b)}
+.warn-row{padding:7px 16px;font-size:12px;border-bottom:1px solid var(--amber-b);display:flex;align-items:baseline;flex-wrap:wrap;gap:6px}
+.warn-row:last-child{border-bottom:none}
+.warn-order{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--amber)}
+.warn-name{color:var(--txt2);font-size:12px}
+.warn-miss{color:var(--txt3);font-size:11px}
+
+/* ── Actions bar ── */
+.actions-bar{display:none;align-items:center;gap:10px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 15px;border-radius:8px;border:none;font-size:13px;font-weight:600;white-space:nowrap;transition:all .15s}
+.btn svg{width:14px;height:14px;flex-shrink:0}
+.btn-or{background:var(--orange);color:#fff}
+.btn-or:hover:not(:disabled){background:var(--orange-h)}
+.btn-or:disabled{opacity:.35;cursor:not-allowed}
+.btn-out{background:var(--surf);color:var(--txt2);border:1px solid var(--bdr)}
+.btn-out:hover{background:var(--surf2);color:var(--txt)}
+.btn-red{background:transparent;color:var(--red);border:1px solid var(--bdr)}
+.btn-red:hover{background:var(--red-soft);border-color:#EBB4B0}
+
+/* ── Filename bar ── */
+.fn-bar{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;box-shadow:var(--sh);padding:14px 16px;display:none;align-items:center;gap:12px;flex-wrap:wrap}
+.fn-group{display:flex;align-items:center;border:1px solid var(--bdr);border-radius:8px;overflow:hidden;background:var(--surf);transition:border-color .15s,box-shadow .15s}
+.fn-group:focus-within{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,127,0,.12)}
+.fn-pre{display:flex;align-items:center;gap:5px;padding:0 10px 0 12px;height:36px;border-right:1px solid var(--bdr);background:var(--surf2);color:var(--txt3);font-size:12px;white-space:nowrap}
+.fn-pre svg{width:13px;height:13px;flex-shrink:0}
+.fn-input{background:transparent;border:none;outline:none;color:var(--txt);font-family:'JetBrains Mono',monospace;font-size:12px;padding:0 6px;height:36px;width:180px}
+.fn-ext{padding:0 12px 0 2px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--txt3);height:36px;display:flex;align-items:center}
+
+/* ── Preview ── */
+.preview-card{display:none;background:var(--surf);border:1px solid var(--bdr);border-radius:10px;box-shadow:var(--sh);overflow:hidden}
+.prev-count{font-size:12px;color:var(--txt3)}
+.tbl-wrap{overflow-x:auto;max-height:520px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{position:sticky;top:0;z-index:2;background:var(--surf2);padding:8px 12px;text-align:left;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.4px;color:var(--txt3);border-bottom:1px solid var(--bdr);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--bdr);transition:background .08s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surf2)}
+tbody tr.editing{background:var(--orange-soft)!important;outline:2px solid var(--orange);outline-offset:-2px}
+tbody td{padding:8px 12px;color:var(--txt);white-space:nowrap;vertical-align:middle;max-width:220px;overflow:hidden;text-overflow:ellipsis}
+.td-order{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;color:var(--orange)}
+.td-warn{color:var(--amber);font-style:italic}
+.td-muted{color:var(--txt3)}
+.td-edit{background:transparent;border:none;outline:none;font-family:inherit;font-size:12px;color:var(--txt);width:100%;padding:0;min-width:80px}
+.no-data{padding:48px;text-align:center;color:var(--txt3);font-size:13px}
+.tbl-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--bdr);background:var(--surf2)}
+.toggle-btn{display:flex;align-items:center;gap:5px;background:none;border:none;font-size:12px;font-weight:500;color:var(--txt3);transition:color .12s}
+.toggle-btn:hover{color:var(--txt)}
+.toggle-btn svg{width:13px;height:13px;transition:transform .2s}
+.toggle-btn.exp svg{transform:rotate(180deg)}
+.edit-hint{font-size:11px;color:var(--txt3);font-style:italic}
+
+/* ── Modal overlay for row click ── */
+.row-action{display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surf);border:1px solid var(--bdr);border-radius:10px;box-shadow:var(--sh2);padding:12px 16px;z-index:300;align-items:center;gap:10px;min-width:320px;animation:slideup .2s ease}
+@keyframes slideup{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.row-action .ra-order{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--orange)}
+.row-action .ra-name{font-size:12px;color:var(--txt2);flex:1}
+.row-action .ra-sp{flex:1}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:3px}
+
+@media(max-width:680px){.stats-grid{grid-template-columns:repeat(2,1fr)}.topbar-sub{display:none}}
+</style>
+</head>
+<body>
+<div style="display:flex;flex-direction:column;min-height:100vh">
+
+<!-- ── Topbar ── -->
+<header class="topbar">
+  <div class="logo-mark">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+    </svg>
+  </div>
+  <span class="topbar-title">QLS Formatter</span>
+  <div class="topbar-sep"></div>
+  <span class="topbar-sub">Shopify → QLS</span>
+  <div class="spacer"></div>
+
+  <!-- Store URL config -->
+  <div class="store-input-wrap" title="Your Shopify admin store handle">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    <label>store/</label>
+    <input class="store-input" id="storeHandle" value="9a71d7-51" placeholder="your-store" title="Shopify store handle for order links">
+  </div>
+
+  <!-- Theme toggle -->
+  <div class="theme-toggle">
+    <button class="tbtn active" id="btnLight" onclick="setTheme('light')" title="Light">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+    <button class="tbtn" id="btnDark" onclick="setTheme('dark')" title="Dark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- ── Main ── -->
+<main class="main">
+
+  <!-- Upload -->
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept=".csv">
+    <div class="upload-inner">
+      <div class="upload-ico">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div><div class="upload-title">Drop your Shopify CSV here</div><div class="upload-hint">or click to browse · accepts .csv order exports</div></div>
+      <div class="upload-pill" id="uploadPill">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span id="pillName"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+      <div class="stat-top"><div><div class="stat-num" id="sTotal">0</div><div class="stat-lbl">Total Orders</div></div>
+      <div class="stat-ico or"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div><div class="stat-num" id="sExport">0</div><div class="stat-lbl">Exporting</div></div>
+      <div class="stat-ico bl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div><div class="stat-num gr" id="sOk">0</div><div class="stat-lbl">Address OK</div></div>
+      <div class="stat-ico gr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><div><div class="stat-num am" id="sWarn">0</div><div class="stat-lbl">Needs Review</div></div>
+      <div class="stat-ico am"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div></div>
+    </div>
+  </div>
+
+  <!-- Filter -->
+  <div class="sec-card" id="filterCard">
+    <div class="sec-head">
+      <div class="sec-head-l">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        <span class="sec-lbl">Filter by product</span>
+      </div>
+      <div class="sec-head-r">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="search-input" id="chipSearch" placeholder="Search products…">
+        </div>
+        <button class="txt-btn" id="btnAll">Select all</button>
+        <span style="color:var(--bdr2)">·</span>
+        <button class="txt-btn" id="btnNone">Deselect all</button>
+      </div>
+    </div>
+    <div class="filter-body" id="filterBody"></div>
+  </div>
+
+  <!-- Warnings -->
+  <div class="warn-box" id="warnBox">
+    <div class="warn-head">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Missing address data — click a row in the preview to edit
+    </div>
+    <div class="warn-list" id="warnList"></div>
+  </div>
+
+  <!-- Preview -->
+  <div class="preview-card" id="previewCard">
+    <div class="sec-head">
+      <div class="sec-head-l">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 9v9"/></svg>
+        <span class="sec-lbl">Preview</span>
+      </div>
+      <div class="sec-head-r">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="search-input" id="tblSearch" placeholder="Order #, name, product…" style="width:170px">
+        </div>
+        <span class="prev-count" id="prevCount"></span>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Order #</th><th>Name</th><th>Qty</th><th>Product</th>
+          <th>EAN / SKU</th><th>House No.</th><th>Street</th>
+          <th>Postcode</th><th>City</th><th>Country</th><th>Email</th><th>Notes</th>
+        </tr></thead>
+        <tbody id="tblBody"></tbody>
+      </table>
+    </div>
+    <div class="tbl-footer" id="tblFooter" style="display:none">
+      <button class="toggle-btn" id="btnToggle">
+        <span id="toggleLbl">Show all rows</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <span class="edit-hint">Click any row to edit · changes auto-saved</span>
+    </div>
+  </div>
+
+  <!-- Filename + actions (below preview) -->
+  <div class="fn-bar" id="fnBar">
+    <div class="fn-group">
+      <div class="fn-pre">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+        Filename
+      </div>
+      <input class="fn-input" type="text" id="fnInput" value="QLS_orders">
+      <span class="fn-ext">.xlsx</span>
+    </div>
+    <button class="btn btn-or" id="btnDl" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download XLSX
+    </button>
+    <div class="spacer"></div>
+    <button class="btn btn-out" id="btnClearSave" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      Clear saved session
+    </button>
+    <button class="btn btn-red" id="btnReset">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.13"/></svg>
+      New file
+    </button>
+  </div>
+
+</main>
+</div>
+
+<!-- ── Row action toast ── -->
+<div class="row-action" id="rowAction">
+  <span class="ra-order" id="raOrder"></span>
+  <span class="ra-name" id="raName"></span>
+  <div class="ra-sp"></div>
+  <a id="raLink" href="#" target="_blank" class="btn btn-out" style="text-decoration:none;font-size:12px;height:30px;padding:0 10px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+    Open in Shopify
+  </a>
+  <button onclick="hideToast()" style="background:none;border:none;color:var(--txt3);font-size:18px;line-height:1;padding:0 2px">×</button>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// THEME
+// ══════════════════════════════════════════════════════════
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  document.getElementById('btnLight').classList.toggle('active',t==='light');
+  document.getElementById('btnDark').classList.toggle('active',t==='dark');
+  try{localStorage.setItem('qls-theme',t)}catch(e){}
+}
+(()=>{ try{const s=localStorage.getItem('qls-theme');if(s)setTheme(s)}catch(e){} })();
+
+// Store handle persistence
+const storeEl = document.getElementById('storeHandle');
+try{ const h=localStorage.getItem('qls-store'); if(h) storeEl.value=h; }catch(e){}
+storeEl.addEventListener('input',()=>{ try{localStorage.setItem('qls-store',storeEl.value)}catch(e){} });
+
+// ══════════════════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════════════════
+const WORD_JOINER='\u2060', PREVIEW_N=10, SAVE_KEY='qls-session';
+const COLS=['Ordernummer','Naam','Aantal besteld','Productnaam','EAN','Huisnummer','Straat','Postcode','Stad','Land','E-mail','Notes'];
+// Which columns are editable (for "Needs Review" fixing)
+const EDITABLE_COLS=new Set(['Naam','Aantal besteld','Productnaam','EAN','Huisnummer','Straat','Postcode','Stad','Land','E-mail','Notes']);
+
+// ══════════════════════════════════════════════════════════
+// ADDRESS & TRANSFORM
+// ══════════════════════════════════════════════════════════
+function parseAddress(a1,a2){
+  a1=(a1||'').trim(); a2=(a2||'').trim();
+  let street='',num='';
+  if(a1.includes(WORD_JOINER)){
+    const i=a1.indexOf(WORD_JOINER);
+    street=a1.slice(0,i+1); num=a1.slice(i+1).trim();
+  } else {
+    const m=a1.match(/^(.*?)\s+(\d[\w.\-]*)$/);
+    if(m){street=m[1].trim();num=m[2].trim();}
+    else{const m2=a1.match(/^(\d[\w.\-]*)\s+(.+)$/);if(m2){street=m2[2].trim();num=m2[1].trim();}else street=a1;}
+  }
+  if(a2&&!num.toLowerCase().includes(a2.toLowerCase())) num=num?`${num}, ${a2}`:a2;
+  return{street,num};
+}
+function cleanZip(z){return z?String(z).replace(/^'/,'').trim():''}
+// Force SKU to string — prevents scientific notation in XLSX
+function cleanSku(s){s=(s||'').trim();if(!s)return'';if(/^\d+$/.test(s))return s;return s;}
+
+function transformGroup(rows){
+  const hdr=rows.find(r=>r['Shipping Address1']?.trim())||rows.find(r=>r['Shipping City']?.trim())||rows[0];
+  const{street,num}=parseAddress(hdr['Shipping Address1'],hdr['Shipping Address2']);
+  return rows.map(row=>{
+    const sku=cleanSku(row['Lineitem sku']);
+    // Preserve numeric order ID for Shopify link
+    const rawId=hdr['Id']||row['Id']||'';
+    const shopifyId=rawId?String(rawId).replace(/\.0$/,'').replace(/[^0-9]/g,''):'';
+    return{
+      Ordernummer:(hdr['Name']||'').trim(),
+      _shopifyId:shopifyId,
+      Naam:(hdr['Shipping Name']||hdr['Billing Name']||hdr['Name']||'').trim(),
+      'Aantal besteld':row['Lineitem quantity']||1,
+      Productnaam:(row['Lineitem name']||'').trim(),
+      EAN:sku, SKU:sku,
+      Huisnummer:num,
+      Straat:street,
+      Postcode:cleanZip(hdr['Shipping Zip']),
+      Stad:(hdr['Shipping City']||'').trim(),
+      Land:(hdr['Shipping Country']||'').trim(),
+      'E-mail':(hdr['Email']||'').trim(),
+      Notes:(hdr['Notes']||'').trim(),
+    };
+  });
+}
+function hasWarn(r){return!r.Huisnummer||!r.Straat||!r.Postcode||!r.Stad}
+
+// ══════════════════════════════════════════════════════════
+// CSV PARSER
+// ══════════════════════════════════════════════════════════
+function parseCSV(txt){
+  const lines=txt.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+  const hdrs=parseLine(lines[0]); const rows=[];
+  for(let i=1;i<lines.length;i++){
+    const l=lines[i].trim(); if(!l)continue;
+    const v=parseLine(l),o={};
+    hdrs.forEach((h,j)=>{o[h]=v[j]??''}); rows.push(o);
+  }
+  return rows;
+}
+function parseLine(l){
+  const r=[];let c='',q=false;
+  for(let i=0;i<l.length;i++){
+    if(l[i]==='"'){if(q&&l[i+1]==='"'){c+='"';i++;}else q=!q;}
+    else if(l[i]===','&&!q){r.push(c);c='';}else c+=l[i];
+  }
+  r.push(c);return r;
+}
+function groupRows(rows){
+  const groups=[],seen=new Map();
+  rows.forEach(row=>{
+    const n=(row['Name']||'').trim(); if(!n)return;
+    if(seen.has(n))seen.get(n).rows.push(row);
+    else{const g={order:n,rows:[row]};groups.push(g);seen.set(n,g);}
+  });
+  return groups;
+}
+
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+let allData=[], selected=new Set(), counts={}, expanded=false, chipQ='', tblQ='', origFilename='';
+const filtered=()=>selected.size?allData.filter(r=>selected.has(r.Productnaam)):[];
+function tblFiltered(){
+  const q=tblQ.toLowerCase().trim();
+  const f=filtered();
+  if(!q)return f;
+  return f.filter(r=>
+    r.Ordernummer.toLowerCase().includes(q)||
+    r.Naam.toLowerCase().includes(q)||
+    r.Productnaam.toLowerCase().includes(q)||
+    r.EAN.toLowerCase().includes(q)||
+    r.Stad.toLowerCase().includes(q)||
+    r.Postcode.toLowerCase().includes(q)||
+    r['E-mail'].toLowerCase().includes(q)
+  );
+}
+
+// ══════════════════════════════════════════════════════════
+// SESSION PERSISTENCE
+// ══════════════════════════════════════════════════════════
+function saveSession(){
+  try{
+    const payload={
+      allData,
+      selected:Array.from(selected),
+      counts,
+      origFilename,
+      filename:document.getElementById('fnInput').value,
+    };
+    localStorage.setItem(SAVE_KEY,JSON.stringify(payload));
+  }catch(e){console.warn('Session save failed',e)}
+}
+function loadSession(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw)return false;
+    const p=JSON.parse(raw);
+    if(!p.allData||!p.allData.length)return false;
+    allData=p.allData;
+    counts=p.counts||{};
+    selected=new Set(p.selected||Object.keys(counts));
+    origFilename=p.origFilename||'';
+    document.getElementById('fnInput').value=p.filename||origFilename;
+    document.getElementById('pillName').textContent='(restored session)';
+    document.getElementById('uploadPill').style.display='flex';
+    return true;
+  }catch(e){return false}
+}
+function clearSession(){
+  try{localStorage.removeItem(SAVE_KEY)}catch(e){}
+}
+
+// ══════════════════════════════════════════════════════════
+// DOM HELPERS
+// ══════════════════════════════════════════════════════════
+const $=id=>document.getElementById(id);
+function show(id,d='block'){$(id).style.display=d}
+function hide(id){$(id).style.display='none'}
+
+// ══════════════════════════════════════════════════════════
+// EVENTS
+// ══════════════════════════════════════════════════════════
+const uz=$('uploadZone');
+uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('drag-over')});
+uz.addEventListener('dragleave',()=>uz.classList.remove('drag-over'));
+uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('drag-over');if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0])});
+$('fileInput').addEventListener('change',e=>{if(e.target.files[0])loadFile(e.target.files[0])});
+$('btnDl').addEventListener('click',doDownload);
+$('btnReset').addEventListener('click',doReset);
+$('btnClearSave').addEventListener('click',()=>{clearSession();$('btnClearSave').textContent='✓ Cleared';setTimeout(()=>{$('btnClearSave').innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>Clear saved session';},1500)});
+$('btnAll').addEventListener('click',()=>{selected=new Set(Object.keys(counts));renderChips();update()});
+$('btnNone').addEventListener('click',()=>{selected.clear();renderChips();update()});
+$('btnToggle').addEventListener('click',()=>{
+  expanded=!expanded;
+  $('btnToggle').classList.toggle('exp',expanded);
+  renderTable();
+});
+$('chipSearch').addEventListener('input',e=>{chipQ=e.target.value;filterChips()});
+$('tblSearch').addEventListener('input',e=>{tblQ=e.target.value;expanded=false;renderTable()});
+
+// Close toast on outside click
+document.addEventListener('click',e=>{
+  const ra=$('rowAction');
+  if(ra.style.display!=='none'&&!ra.contains(e.target)&&!e.target.closest('tr[data-idx]'))hideToast();
+});
+
+// ══════════════════════════════════════════════════════════
+// LOAD FILE
+// ══════════════════════════════════════════════════════════
+function loadFile(file){
+  if(!file.name.toLowerCase().endsWith('.csv')){alert('Please select a .csv file.');return}
+  origFilename=file.name.replace(/\.csv$/i,'');
+  $('pillName').textContent=file.name;
+  show('uploadPill','flex');
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const groups=groupRows(parseCSV(e.target.result));
+    allData=[];
+    groups.forEach(g=>allData.push(...transformGroup(g.rows)));
+    counts={};
+    allData.forEach(r=>{if(r.Productnaam)counts[r.Productnaam]=(counts[r.Productnaam]||0)+1});
+    selected=new Set(Object.keys(counts));
+    // Set filename to CSV filename
+    $('fnInput').value=origFilename;
+    bootUI();
+    saveSession();
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+function bootUI(){
+  show('statsGrid','grid');
+  show('filterCard');
+  show('previewCard');
+  show('fnBar','flex');
+  show('btnClearSave');
+  expanded=false; chipQ=''; tblQ='';
+  $('chipSearch').value='';
+  $('tblSearch').value='';
+  renderChips();
+  update();
+}
+
+// ══════════════════════════════════════════════════════════
+// CHIPS
+// ══════════════════════════════════════════════════════════
+function renderChips(){
+  const body=$('filterBody');
+  body.innerHTML='';
+  Object.keys(counts).sort((a,b)=>a.localeCompare(b)).forEach(name=>{
+    const lbl=document.createElement('label');
+    lbl.className='chip'+(selected.has(name)?' on':'');
+    lbl.dataset.name=name;
+    lbl.innerHTML=`<input type="checkbox" ${selected.has(name)?'checked':''}><span class="chip-dot"></span><span>${name}</span><span class="chip-count">${counts[name]}</span>`;
+    lbl.querySelector('input').addEventListener('change',ev=>{
+      ev.target.checked?selected.add(name):selected.delete(name);
+      lbl.classList.toggle('on',ev.target.checked);
+      update();saveSession();
+    });
+    body.appendChild(lbl);
+  });
+  filterChips();
+}
+function filterChips(){
+  const q=chipQ.toLowerCase();
+  document.querySelectorAll('.chip').forEach(c=>{
+    c.classList.toggle('hidden-chip',q&&!c.dataset.name.toLowerCase().includes(q));
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// UPDATE (stats + warnings)
+// ══════════════════════════════════════════════════════════
+function update(){
+  const f=filtered();
+  const warn=f.filter(hasWarn);
+  const uniq=new Set(allData.map(r=>r.Ordernummer)).size;
+  $('sTotal').textContent=uniq;
+  $('sExport').textContent=f.length;
+  $('sOk').textContent=f.length-warn.length;
+  $('sWarn').textContent=warn.length;
+
+  if(warn.length){
+    $('warnList').innerHTML=warn.map(r=>{
+      const miss=[];
+      if(!r.Straat)miss.push('street');if(!r.Huisnummer)miss.push('house no.');
+      if(!r.Postcode)miss.push('postcode');if(!r.Stad)miss.push('city');
+      return`<div class="warn-row"><span class="warn-order">${r.Ordernummer}</span><span class="warn-name">${r.Naam}</span><span class="warn-miss">missing: ${miss.join(', ')}</span></div>`;
+    }).join('');
+    show('warnBox');
+  } else hide('warnBox');
+
+  renderTable();
+  $('btnDl').disabled=f.length===0;
+}
+
+// ══════════════════════════════════════════════════════════
+// TABLE
+// ══════════════════════════════════════════════════════════
+function renderTable(){
+  const f=tblFiltered();
+  const body=$('tblBody');
+  body.innerHTML='';
+
+  if(!f.length){
+    body.innerHTML='<tr><td colspan="12" class="no-data">No rows match.</td></tr>';
+    hide('tblFooter'); $('prevCount').textContent='';return;
+  }
+
+  const rows=expanded?f:f.slice(0,PREVIEW_N);
+
+  rows.forEach((r,visIdx)=>{
+    // Find real index in allData for edits
+    const dataIdx=allData.indexOf(r);
+    const tr=document.createElement('tr');
+    tr.dataset.idx=dataIdx;
+
+    COLS.forEach(col=>{
+      const td=document.createElement('td');
+      const v=r[col]??'';
+      td.textContent=v;
+      td.dataset.col=col;
+      if(col==='Ordernummer') td.className='td-order';
+      else if(!v&&hasWarn(r)&&['Huisnummer','Straat','Postcode','Stad'].includes(col)) td.className='td-warn';
+      else if(!v) td.className='td-muted';
+      tr.appendChild(td);
+    });
+
+    // Row click → show toast OR start editing
+    tr.addEventListener('click',e=>{
+      if(e.target.tagName==='INPUT')return;
+      showRowAction(r, dataIdx, tr);
+    });
+
+    body.appendChild(tr);
+  });
+
+  // Footer
+  if(f.length>PREVIEW_N){
+    $('toggleLbl').textContent=expanded?'Show less':`Show all ${f.length} rows`;
+    $('btnToggle').classList.toggle('exp',expanded);
+    show('tblFooter','flex');
+  } else hide('tblFooter');
+
+  $('prevCount').textContent=expanded?`${f.length} rows`:`Showing ${Math.min(PREVIEW_N,f.length)} of ${f.length}`;
+}
+
+// ══════════════════════════════════════════════════════════
+// ROW EDITING (click to edit inline)
+// ══════════════════════════════════════════════════════════
+let editingTr=null;
+function showRowAction(r, dataIdx, tr){
+  // If already editing this row → close
+  if(editingTr===tr){stopEditing();hideToast();return;}
+  // Stop any current editing
+  if(editingTr)stopEditing();
+
+  // Start inline editing
+  editingTr=tr;
+  tr.classList.add('editing');
+  Array.from(tr.querySelectorAll('td')).forEach(td=>{
+    const col=td.dataset.col;
+    if(!EDITABLE_COLS.has(col))return;
+    const val=allData[dataIdx][col]??'';
+    const inp=document.createElement('input');
+    inp.className='td-edit';
+    inp.value=val;
+    inp.addEventListener('change',()=>{
+      allData[dataIdx][col]=inp.value.trim();
+      saveSession();
+    });
+    inp.addEventListener('click',e=>e.stopPropagation());
+    td.textContent='';
+    td.appendChild(inp);
+  });
+
+  // Toast
+  const handle=storeEl.value.trim()||'your-store';
+  const shopifyId=r._shopifyId||'';
+  $('raOrder').textContent=r.Ordernummer;
+  $('raName').textContent=r.Naam;
+  $('raLink').href=shopifyId?`https://admin.shopify.com/store/${handle}/orders/${shopifyId}`:'#';
+  $('raLink').style.opacity=shopifyId?'1':'0.4';
+  $('raLink').title=shopifyId?'Open order in Shopify admin':'No order ID found';
+  show('rowAction','flex');
+}
+function stopEditing(){
+  if(!editingTr)return;
+  editingTr.classList.remove('editing');
+  // Re-render cells from allData
+  const dataIdx=parseInt(editingTr.dataset.idx);
+  const r=allData[dataIdx];
+  Array.from(editingTr.querySelectorAll('td')).forEach(td=>{
+    const col=td.dataset.col;
+    const v=r[col]??'';
+    td.innerHTML='';
+    td.textContent=v;
+    td.className='';
+    if(col==='Ordernummer')td.className='td-order';
+    else if(!v&&hasWarn(r)&&['Huisnummer','Straat','Postcode','Stad'].includes(col))td.className='td-warn';
+    else if(!v)td.className='td-muted';
+  });
+  editingTr=null;
+  // Refresh stats (warn count may have changed)
+  update();
+}
+function hideToast(){
+  stopEditing();
+  hide('rowAction');
+}
+
+// ══════════════════════════════════════════════════════════
+// DOWNLOAD — force SKU/EAN as text in XLSX
+// ══════════════════════════════════════════════════════════
+function doDownload(){
+  const f=filtered();
+  if(!f.length)return;
+  // Strip internal _shopifyId before export
+  const exportData=f.map(r=>{
+    const o={};
+    COLS.forEach(c=>{o[c]=r[c]??''});
+    return o;
+  });
+
+  const ws=XLSX.utils.json_to_sheet(exportData);
+
+  // Force EAN and SKU columns to text type to prevent scientific notation
+  const range=XLSX.utils.decode_range(ws['!ref']);
+  // Find column indices for EAN and SKU
+  const headerRow=exportData[0];
+  const colKeys=Object.keys(headerRow);
+  const eanIdx=colKeys.indexOf('EAN'), skuIdx=colKeys.indexOf('SKU');
+  for(let R=range.s.r+1;R<=range.e.r;R++){
+    [eanIdx,skuIdx].forEach(C=>{
+      if(C<0)return;
+      const addr=XLSX.utils.encode_cell({r:R,c:C});
+      if(ws[addr]){ws[addr].t='s';ws[addr].z='@';}
+    });
+  }
+
+  const base=($('fnInput').value.trim()||'QLS_orders').replace(/\.xlsx$/i,'');
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
+  XLSX.writeFile(wb,base+'.xlsx');
+}
+
+// ══════════════════════════════════════════════════════════
+// RESET
+// ══════════════════════════════════════════════════════════
+function doReset(){
+  allData=[];selected=new Set();counts={};expanded=false;chipQ='';tblQ='';origFilename='';
+  $('fileInput').value='';
+  hide('uploadPill');
+  ['statsGrid','filterCard','warnBox','previewCard','fnBar'].forEach(hide);
+  $('filterBody').innerHTML='';$('tblBody').innerHTML='';
+  hide('rowAction');
+  clearSession();
+}
+
+// ══════════════════════════════════════════════════════════
+// BOOT — try to restore session
+// ══════════════════════════════════════════════════════════
+if(loadSession()){
+  bootUI();
+  show('btnClearSave');
+}
+</script>
+</body>
+</html>
